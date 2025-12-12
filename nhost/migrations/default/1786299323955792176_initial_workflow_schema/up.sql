@@ -132,3 +132,79 @@ CREATE INDEX idx_workflow_triggers_workflow_id
   ON public.workflow_triggers(workflow_id);
 
 -- =========================================================
+-- WORKFLOW RUNS
+-- =========================================================
+
+CREATE TABLE public.workflow_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workflow_id uuid NOT NULL REFERENCES public.workflows(id) ON DELETE CASCADE,
+  triggered_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  trigger_type public.trigger_type NOT NULL DEFAULT 'manual',
+  status public.workflow_run_status NOT NULL DEFAULT 'pending',
+  started_at timestamptz,
+  completed_at timestamptz,
+  error text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_workflow_runs_workflow_id
+  ON public.workflow_runs(workflow_id);
+
+CREATE INDEX idx_workflow_runs_status
+  ON public.workflow_runs(status);
+
+-- =========================================================
+-- STEP RUNS
+-- =========================================================
+
+CREATE TABLE public.step_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workflow_run_id uuid NOT NULL REFERENCES public.workflow_runs(id) ON DELETE CASCADE,
+  workflow_step_id uuid NOT NULL REFERENCES public.workflow_steps(id) ON DELETE CASCADE,
+
+  status public.step_run_status NOT NULL DEFAULT 'pending',
+
+  input jsonb,
+  output jsonb,
+  error text,
+
+  attempt_count integer NOT NULL DEFAULT 0,
+
+  approved_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  approved_at timestamptz,
+
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_step_runs_workflow_run_id
+  ON public.step_runs(workflow_run_id);
+
+CREATE INDEX idx_step_runs_workflow_step_id
+  ON public.step_runs(workflow_step_id);
+
+-- =========================================================
+-- DB WRITE OUTPUTS
+-- Used by the db_write workflow step.
+-- =========================================================
+
+CREATE TABLE public.workflow_outputs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workflow_run_id uuid NOT NULL REFERENCES public.workflow_runs(id) ON DELETE CASCADE,
+  step_run_id uuid REFERENCES public.step_runs(id) ON DELETE SET NULL,
+  key text NOT NULL,
+  value jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_workflow_outputs_run_id
+  ON public.workflow_outputs(workflow_run_id);
+
+-- =========================================================
+-- NOTIFICATION OUTBOX
+-- Used by notify/Event Trigger.
+-- =========================================================
+
+CREATE TABLE public.notification_outbox (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
