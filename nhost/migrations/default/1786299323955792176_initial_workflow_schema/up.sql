@@ -208,3 +208,71 @@ CREATE INDEX idx_workflow_outputs_run_id
 
 CREATE TABLE public.notification_outbox (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  workflow_run_id uuid REFERENCES public.workflow_runs(id) ON DELETE SET NULL,
+  channel text NOT NULL DEFAULT 'webhook',
+  recipient text,
+  subject text,
+  message text NOT NULL,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  delivered boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_notification_outbox_org_id
+  ON public.notification_outbox(org_id);
+
+-- =========================================================
+-- USAGE AGGREGATION VIEW
+-- Required by assignment.
+-- =========================================================
+
+CREATE OR REPLACE VIEW public.organization_usage_monthly AS
+SELECT
+  o.id AS organization_id,
+  o.name AS organization_name,
+  o.quota_calls_allowed,
+  o.quota_calls_used,
+  o.quota_period_start,
+  COUNT(wr.id) FILTER (
+    WHERE wr.created_at >= date_trunc('month', now())
+  ) AS runs_this_month,
+  COUNT(wr.id) FILTER (
+    WHERE wr.status = 'completed'
+      AND wr.created_at >= date_trunc('month', now())
+  ) AS completed_runs_this_month,
+  COUNT(wr.id) FILTER (
+    WHERE wr.status = 'failed'
+      AND wr.created_at >= date_trunc('month', now())
+  ) AS failed_runs_this_month
+FROM public.organizations o
+LEFT JOIN public.workflows w
+  ON w.org_id = o.id
+LEFT JOIN public.workflow_runs wr
+  ON wr.workflow_id = w.id
+GROUP BY
+  o.id,
+  o.name,
+  o.quota_calls_allowed,
+  o.quota_calls_used,
+  o.quota_period_start;
+
+-- =========================================================
+-- HELPFUL CONSTRAINTS
+-- =========================================================
+
+ALTER TABLE public.workflow_steps
+ADD CONSTRAINT workflow_steps_position_positive
+CHECK (position >= 0);
+
+ALTER TABLE public.step_runs
+ADD CONSTRAINT step_runs_attempt_count_positive
+CHECK (attempt_count >= 0);
+
+ALTER TABLE public.organizations
+ADD CONSTRAINT organizations_quota_valid
+CHECK (
+  quota_calls_used >= 0
+  AND quota_calls_allowed > 0
+  AND quota_calls_used <= quota_calls_allowed
+);
