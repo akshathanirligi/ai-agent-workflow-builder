@@ -6,6 +6,7 @@ import { nhost } from "../../../lib/nhost";
 
 export default function LoginPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignup, setIsSignup] = useState(false);
@@ -14,6 +15,7 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
     setLoading(true);
     setMessage("");
 
@@ -27,7 +29,9 @@ export default function LoginPage() {
         if (result.body?.session) {
           router.push("/");
         } else {
-          setMessage("Account created. Check your email if email verification is enabled.");
+          setMessage(
+            "Account created. Check your email if email verification is enabled."
+          );
         }
       } else {
         const result = await nhost.auth.signInEmailPassword({
@@ -42,7 +46,9 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Something went wrong.");
+      setMessage(
+        error instanceof Error ? error.message : "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }
@@ -51,14 +57,22 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
       <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8">
-        <h1 className="text-2xl font-bold">AI Agent Workflow Builder</h1>
+        <h1 className="text-2xl font-bold">
+          AI Agent Workflow Builder
+        </h1>
+
         <p className="mt-2 text-sm text-slate-400">
-          {isSignup ? "Create your account" : "Sign in to your organization"}
+          {isSignup
+            ? "Create your account"
+            : "Sign in to your organization"}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <div>
-            <label className="mb-2 block text-sm text-slate-300">Email</label>
+            <label className="mb-2 block text-sm text-slate-300">
+              Email
+            </label>
+
             <input
               type="email"
               required
@@ -70,7 +84,10 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-slate-300">Password</label>
+            <label className="mb-2 block text-sm text-slate-300">
+              Password
+            </label>
+
             <input
               type="password"
               required
@@ -83,7 +100,9 @@ export default function LoginPage() {
           </div>
 
           {message && (
-            <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">{message}</div>
+            <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+              {message}
+            </div>
           )}
 
           <button
@@ -91,7 +110,11 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold hover:bg-blue-500 disabled:opacity-50"
           >
-            {loading ? "Please wait..." : isSignup ? "Create Account" : "Sign In"}
+            {loading
+              ? "Please wait..."
+              : isSignup
+                ? "Create Account"
+                : "Sign In"}
           </button>
         </form>
 
@@ -102,7 +125,9 @@ export default function LoginPage() {
           }}
           className="mt-5 w-full text-sm text-blue-400 hover:text-blue-300"
         >
-          {isSignup ? "Already have an account? Sign in" : "Need an account? Create one"}
+          {isSignup
+            ? "Already have an account? Sign in"
+            : "Need an account? Create one"}
         </button>
       </div>
     </main>
