@@ -23,6 +23,8 @@ export default function Home() {
   const [steps, setSteps] = useState<Step[]>([
     { id: 1, icon: "🤖", title: "Analyze Request", type: "llm_call", description: "Analyze the incoming request" },
     { id: 2, icon: "🌐", title: "Fetch Details", type: "http_request", description: "Fetch information from an API" },
+    { id: 3, icon: "🔀", title: "Check Priority", type: "conditional_branch", description: "Decide based on AI output" },
+    { id: 4, icon: "🔐", title: "Manager Approval", type: "approval_gate", description: "Wait for an authorized approver" },
   ]);
 
   return (
