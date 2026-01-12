@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 type Step = {
   id: number;
   icon: string;
@@ -18,6 +20,11 @@ const stepTypes = [
 ];
 
 export default function Home() {
+  const [steps, setSteps] = useState<Step[]>([
+    { id: 1, icon: "🤖", title: "Analyze Request", type: "llm_call", description: "Analyze the incoming request" },
+    { id: 2, icon: "🌐", title: "Fetch Details", type: "http_request", description: "Fetch information from an API" },
+  ]);
+
   return (
     <main className="min-h-screen bg-slate-950 text-white p-8">
       <h1 className="text-2xl font-bold">AI Agent Workflow Builder</h1>
