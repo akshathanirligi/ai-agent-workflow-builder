@@ -27,6 +27,17 @@ export default function Home() {
     { id: 4, icon: "🔐", title: "Manager Approval", type: "approval_gate", description: "Wait for an authorized approver" },
   ]);
 
+  function addStep(stepType: (typeof stepTypes)[number]) {
+    const newStep: Step = {
+      id: steps.length + 1,
+      icon: stepType.icon,
+      title: stepType.title,
+      type: stepType.type,
+      description: stepType.description,
+    };
+    setSteps([...steps, newStep]);
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white p-8">
       <h1 className="text-2xl font-bold">AI Agent Workflow Builder</h1>
