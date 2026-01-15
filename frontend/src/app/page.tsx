@@ -111,387 +111,6 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
     );
   }
 
-  async function saveWorkflow() {
-    try {
-      const session = nhost.getUserSession();
-
-      if (!session) {
-        alert("Please login first");
-        return;
-      }
-
-      const userId = session.user?.id;
-
-      if (!userId) {
-        alert("Please login again");
-        return;
-      }
-
-      const organizationId =
-        "bc8ea11d-d4ab-4306-8c55-a506adb81774";
-
-      const workflowResponse = await nhost.graphql.request({
-        query: `
-          mutation CreateWorkflow(
-            $workflow: workflows_insert_input!
-          ) {
-            insert_workflows_one(object: $workflow) {
-              id
-              name
-            }
-          }
-        `,
-        variables: {
-          workflow: {
-            org_id: organizationId,
-            name: "AI Agent Workflow",
-            description:
-              "AI workflow created from the workflow builder",
-            active: true,
-            created_by: userId,
-          },
-        },
-      });
-
-      const workflowErrors = workflowResponse.body.errors;
-
-      if (workflowErrors && workflowErrors.length > 0) {
-        console.error("Workflow errors:", workflowErrors);
-        alert("Failed to save workflow");
-        return;
-      }
-
-      const workflowData: any = workflowResponse.body.data;
-
-      const workflowId =
-        workflowData?.insert_workflows_one?.id;
-
-      if (!workflowId) {
-        console.error(
-          "Workflow response:",
-          workflowResponse.body
-        );
-        alert("Workflow was not created");
-        return;
-      }
-
-      for (const step of steps) {
-        const stepResponse = await nhost.graphql.request({
-          query: `
-            mutation CreateWorkflowStep(
-              $step: workflow_steps_insert_input!
-            ) {
-              insert_workflow_steps_one(object: $step) {
-                id
-              }
-            }
-          `,
-          variables: {
-            step: {
-              workflow_id: workflowId,
-              position: step.id,
-              name: step.title,
-              type: step.type,
-              config: {},
-            },
-          },
-        });
-
-        const stepErrors = stepResponse.body.errors;
-
-        if (stepErrors && stepErrors.length > 0) {
-          console.error("Step errors:", stepErrors);
-          alert(
-            "Workflow was created, but a step could not be saved."
-          );
-          return;
-        }
-      }
-
-      setSaved(true);
-
-      setTimeout(() => {
-        setSaved(false);
-      }, 2000);
-
-      alert("Workflow saved successfully!");
-    } catch (error) {
-      console.error("Save workflow error:", error);
-      alert(
-        "Something went wrong while saving the workflow."
-      );
-    }
-  }
-
-async function runWorkflow() {
-  setRunning(true);
-
-  try {
-    const session = nhost.getUserSession();
-
-    if (!session?.user?.id) {
-      alert("Please login first");
-      setRunning(false);
-      return;
-    }
-
-    const userId = session.user.id;
-
-    // Get the latest workflow created by this user
-    const workflowResponse = await nhost.graphql.request({
-      query: `
-        query GetLatestWorkflow($userId: uuid!) {
-          workflows(
-            where: { created_by: { _eq: $userId } }
-            order_by: { created_at: desc }
-            limit: 1
-          ) {
-            id
-            workflow_steps(
-              order_by: { position: asc }
-            ) {
-              id
-              position
-              name
-              type
-            }
-          }
-        }
-      `,
-      variables: {
-        userId,
-      },
-    });
-
-    const workflowBody = workflowResponse.body as {
-      data?: {
-        workflows?: Array<{
-          id: string;
-          workflow_steps: Array<{
-            id: string;
-            position: number;
-            name: string;
-            type: string;
-          }>;
-        }>;
-      };
-      errors?: Array<{
-        message: string;
-      }>;
-    };
-
-    if (workflowBody.errors && workflowBody.errors.length > 0) {
-      console.error(workflowBody.errors);
-      alert(workflowBody.errors[0].message);
-      setRunning(false);
-      return;
-    }
-
-    const workflow = workflowBody.data?.workflows?.[0];
-
-    if (!workflow) {
-      alert("Please save the workflow first");
-      setRunning(false);
-      return;
-    }
-
-    // Create workflow run
-    const runResponse = await nhost.graphql.request({
-      query: `
-        mutation CreateWorkflowRun(
-          $run: workflow_runs_insert_input!
-        ) {
-          insert_workflow_runs_one(object: $run) {
-            id
-          }
-        }
-      `,
-      variables: {
-        run: {
-          workflow_id: workflow.id,
-          triggered_by: userId,
-          trigger_type: "manual",
-          status: "paused",
-          started_at: new Date().toISOString(),
-        },
-      },
-    });
-
-    const runBody = runResponse.body as {
-      data?: {
-        insert_workflow_runs_one?: {
-          id: string;
-        };
-      };
-      errors?: Array<{
-        message: string;
-      }>;
-    };
-
-    if (runBody.errors && runBody.errors.length > 0) {
-      console.error(runBody.errors);
-      alert(runBody.errors[0].message);
-      setRunning(false);
-      return;
-    }
-
-    const workflowRunId =
-      runBody.data?.insert_workflow_runs_one?.id;
-
-    if (!workflowRunId) {
-  alert("Workflow run was not created");
-  setRunning(false);
-  return;
-}
-
-setApprovalRunId(workflowRunId);
-
-setApprovalPending(
-  workflow.workflow_steps.some(
-    (step) => step.type === "approval_gate"
-  )
-);
-
-setApprovalCompleted(false);
-setApprovalRunId(workflowRunId!);
-
-setApprovalPending(
-  workflow.workflow_steps.some(
-    (step) => step.type === "approval_gate"
-  )
-);
-
-setApprovalCompleted(false);
-
-    if (!workflowRunId) {
-      alert("Workflow run was not created");
-      setRunning(false);
-      return;
-    }
-
-    // Create step runs
-    for (const step of workflow.workflow_steps) {
-      const stepStatus =
-        step.type === "approval_gate"
-          ? "paused"
-          : "completed";
-
-      const stepResponse = await nhost.graphql.request({
-        query: `
-          mutation CreateStepRun(
-            $stepRun: step_runs_insert_input!
-          ) {
-            insert_step_runs_one(object: $stepRun) {
-              id
-            }
-          }
-        `,
-        variables: {
-          stepRun: {
-            workflow_run_id: workflowRunId,
-            workflow_step_id: step.id,
-            status: stepStatus,
-            input: {},
-            output:
-              stepStatus === "completed"
-                ? { message: `${step.name} completed successfully` }
-                : {},
-            error: null,
-            attempt_count: 1,
-          },
-        },
-      });
-
-      const stepBody = stepResponse.body as {
-        data?: {
-          insert_step_runs_one?: {
-            id: string;
-          };
-        };
-        errors?: Array<{
-          message: string;
-        }>;
-      };
-
-      if (stepBody.errors && stepBody.errors.length > 0) {
-        console.error(stepBody.errors);
-        alert(
-          "Workflow started, but one of the steps could not be recorded."
-        );
-        setRunning(false);
-        return;
-      }
-    }
-
-    setRunning(false);
-
-    alert("Workflow executed successfully!");
-  } catch (error) {
-    console.error("Run workflow error:", error);
-    setRunning(false);
-    alert("Something went wrong while running the workflow.");
-  }
-}
-
-  async function approveWorkflow() {
-    if (!approvalRunId) {
-      alert("No workflow is waiting for approval.");
-      return;
-    }
-
-    try {
-      const response = await nhost.graphql.request({
-        query: `
-          mutation ApproveWorkflow($runId: uuid!) {
-            update_step_runs(
-              where: {
-                workflow_run_id: { _eq: $runId }
-                status: { _eq: "paused" }
-              }
-              _set: {
-                status: "completed"
-              }
-            ) {
-              affected_rows
-            }
-
-            update_workflow_runs_by_pk(
-              pk_columns: { id: $runId }
-              _set: {
-                status: "completed"
-              }
-            ) {
-              id
-              status
-            }
-          }
-        `,
-        variables: {
-          runId: approvalRunId,
-        },
-      });
-
-      const body = response.body as {
-        data?: unknown;
-        errors?: Array<{ message: string }>;
-      };
-
-      if (body.errors && body.errors.length > 0) {
-        console.error(body.errors);
-        alert(body.errors[0].message);
-        return;
-      }
-
-      setApprovalPending(false);
-      setApprovalCompleted(true);
-
-      alert("Workflow approved and completed!");
-    } catch (error) {
-      console.error("Approval error:", error);
-      alert("Something went wrong while approving the workflow.");
-    }
-  }
-
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
@@ -587,10 +206,122 @@ setApprovalCompleted(false);
           </div>
         </aside>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-bold">Workflow</h2>
+        <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold">
+              Workflow
+            </h2>
+
+            <p className="text-sm text-slate-400">
+              Configure the steps in your AI workflow
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {steps.map((step, index) => (
+              <div key={step.id}>
+                <div className="rounded-xl border border-slate-700 bg-slate-800 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-700 text-xl">
+                      {step.icon}
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-slate-500">
+                            STEP {step.id}
+                          </span>
+
+                          <h3 className="font-bold">
+                            {step.title}
+                          </h3>
+                        </div>
+
+                        <button
+                          onClick={() =>
+                            removeStep(step.id)
+                          }
+                          className="text-xl text-slate-500 hover:text-red-400"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <p className="mt-1 text-sm text-slate-400">
+                        {step.description}
+                      </p>
+
+                      <div className="mt-3 inline-block rounded-md bg-slate-700 px-3 py-1 text-xs text-slate-300">
+                        {step.type}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {index < steps.length - 1 && (
+                  <div className="flex justify-center py-2 text-xl text-slate-500">
+                    ↓
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {steps.length === 0 && (
+            <div className="rounded-xl border border-dashed border-slate-700 p-8 text-center">
+              <p className="text-slate-400">
+                No steps yet. Add a step from the left panel.
+              </p>
+            </div>
+          )}
         </section>
-      </div>
+
+        </div>
     </main>
+  );
+}
+
+function RunStatus({
+  icon,
+  title,
+  status,
+  paused = false,
+}: {
+  icon: string;
+  title: string;
+  status: string;
+  paused?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className={`mt-1 text-lg ${
+          paused ? "text-yellow-400" : "text-green-400"
+        }`}
+      >
+        {paused ? "⏸" : "✓"}
+      </div>
+
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span>{icon}</span>
+
+          <span className="font-semibold">
+            {title}
+          </span>
+        </div>
+
+        <p
+          className={`mt-1 text-sm ${
+            paused
+              ? "text-yellow-400"
+              : "text-slate-400"
+          }`}
+        >
+          {status}
+        </p>
+      </div>
+    </div>
   );
 }
