@@ -38,6 +38,17 @@ export default function Home() {
     setSteps([...steps, newStep]);
   }
 
+  function removeStep(id: number) {
+    setSteps(
+      steps
+        .filter((step) => step.id !== id)
+        .map((step, index) => ({
+          ...step,
+          id: index + 1,
+        }))
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white p-8">
       <h1 className="text-2xl font-bold">AI Agent Workflow Builder</h1>
