@@ -229,8 +229,8 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-xs text-slate-500">
-                            STEP {step.id}
+                          <span className="text-xs text-blue-400 font-semibold">
+                            NODE #{step.id}
                           </span>
 
                           <h3 className="font-bold">
