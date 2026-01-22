@@ -111,6 +111,30 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
     );
   }
 
+  async function saveWorkflow() {
+    try {
+      const session = nhost.getUserSession();
+
+      if (!session) {
+        alert("Please login first");
+        return;
+      }
+
+      const userId = session.user?.id;
+
+      if (!userId) {
+        alert("Please login again");
+        return;
+      }
+
+            alert("Session valid. Saving workflow...");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
@@ -229,8 +253,8 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-xs text-blue-400 font-semibold">
-                            NODE #{step.id}
+                          <span className="text-xs text-slate-500">
+                            STEP {step.id}
                           </span>
 
                           <h3 className="font-bold">
