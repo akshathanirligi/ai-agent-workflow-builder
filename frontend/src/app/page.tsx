@@ -127,9 +127,57 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
         return;
       }
 
-            alert("Session valid. Saving workflow...");
-      setSaved(true);
+      const organizationId =
+        "bc8ea11d-d4ab-4306-8c55-a506adb81774";
+
+      const workflowResponse = await nhost.graphql.request({
+        query: `
+          mutation CreateWorkflow(
+            $workflow: workflows_insert_input!
+          ) {
+            insert_workflows_one(object: $workflow) {
+              id
+              name
+            }
+          }
+        `,
+        variables: {
+          workflow: {
+            org_id: organizationId,
+            name: "AI Agent Workflow",
+            description:
+              "AI workflow created from the workflow builder",
+            active: true,
+            created_by: userId,
+          },
+        },
+      });
+
+      const workflowErrors = workflowResponse.body.errors;
+
+      if (workflowErrors && workflowErrors.length > 0) {
+        console.error("Workflow errors:", workflowErrors);
+        alert("Failed to save workflow");
+        return;
+      }
+
+      const workflowData: any = workflowResponse.body.data;
+
+      const workflowId =
+        workflowData?.insert_workflows_one?.id;
+
+      if (!workflowId) {
+        console.error(
+          "Workflow response:",
+          workflowResponse.body
+        );
+        alert("Workflow was not created");
+        return;
+      }
+
+            setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      alert("Workflow saved!");
     } catch (error) {
       console.error(error);
     }
