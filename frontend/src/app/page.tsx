@@ -295,8 +295,82 @@ async function runWorkflow() {
       return;
     }
 
-        alert("Latest workflow loaded.");
-    setRunning(false);
+    // Create workflow run
+    const runResponse = await nhost.graphql.request({
+      query: `
+        mutation CreateWorkflowRun(
+          $run: workflow_runs_insert_input!
+        ) {
+          insert_workflow_runs_one(object: $run) {
+            id
+          }
+        }
+      `,
+      variables: {
+        run: {
+          workflow_id: workflow.id,
+          triggered_by: userId,
+          trigger_type: "manual",
+          status: "paused",
+          started_at: new Date().toISOString(),
+        },
+      },
+    });
+
+    const runBody = runResponse.body as {
+      data?: {
+        insert_workflow_runs_one?: {
+          id: string;
+        };
+      };
+      errors?: Array<{
+        message: string;
+      }>;
+    };
+
+    if (runBody.errors && runBody.errors.length > 0) {
+      console.error(runBody.errors);
+      alert(runBody.errors[0].message);
+      setRunning(false);
+      return;
+    }
+
+    const workflowRunId =
+      runBody.data?.insert_workflow_runs_one?.id;
+
+    if (!workflowRunId) {
+  alert("Workflow run was not created");
+  setRunning(false);
+  return;
+}
+
+setApprovalRunId(workflowRunId);
+
+setApprovalPending(
+  workflow.workflow_steps.some(
+    (step) => step.type === "approval_gate"
+  )
+);
+
+setApprovalCompleted(false);
+setApprovalRunId(workflowRunId!);
+
+setApprovalPending(
+  workflow.workflow_steps.some(
+    (step) => step.type === "approval_gate"
+  )
+);
+
+setApprovalCompleted(false);
+
+    if (!workflowRunId) {
+      alert("Workflow run was not created");
+      setRunning(false);
+      return;
+    }
+
+        setRunning(false);
+    alert("Workflow run created!");
   } catch (error) {
     console.error(error);
     setRunning(false);
