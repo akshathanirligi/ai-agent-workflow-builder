@@ -369,15 +369,71 @@ setApprovalCompleted(false);
       return;
     }
 
+    // Create step runs
+    for (const step of workflow.workflow_steps) {
+      const stepStatus =
+        step.type === "approval_gate"
+          ? "paused"
+          : "completed";
+
+      const stepResponse = await nhost.graphql.request({
+        query: `
+          mutation CreateStepRun(
+            $stepRun: step_runs_insert_input!
+          ) {
+            insert_step_runs_one(object: $stepRun) {
+              id
+            }
+          }
+        `,
+        variables: {
+          stepRun: {
+            workflow_run_id: workflowRunId,
+            workflow_step_id: step.id,
+            status: stepStatus,
+            input: {},
+            output:
+              stepStatus === "completed"
+                ? { message: `${step.name} completed successfully` }
+                : {},
+            error: null,
+            attempt_count: 1,
+          },
+        },
+      });
+
+      const stepBody = stepResponse.body as {
+        data?: {
+          insert_step_runs_one?: {
+            id: string;
+          };
+        };
+        errors?: Array<{
+          message: string;
+        }>;
+      };
+
+      if (stepBody.errors && stepBody.errors.length > 0) {
+        console.error(stepBody.errors);
+        alert(
+          "Workflow started, but one of the steps could not be recorded."
+        );
         setRunning(false);
-    alert("Workflow run created!");
-  } catch (error) {
-    console.error(error);
+        return;
+      }
+    }
+
     setRunning(false);
+
+    alert("Workflow executed successfully!");
+  } catch (error) {
+    console.error("Run workflow error:", error);
+    setRunning(false);
+    alert("Something went wrong while running the workflow.");
   }
 }
 
-return (
+  return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -543,70 +599,7 @@ return (
           )}
         </section>
 
-        <aside className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-          <h2 className="text-lg font-bold">
-            Latest Workflow Run
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-400">
-            Live step-by-step execution status
-          </p>
-
-          <div className="mt-6 space-y-4">
-            <RunStatus
-              icon="🤖"
-              title="LLM Call"
-              status="Completed"
-            />
-
-            <RunStatus
-              icon="🌐"
-              title="HTTP Request"
-              status="Completed"
-            />
-
-            <RunStatus
-              icon="🔀"
-              title="Conditional"
-              status="Completed"
-            />
-
-            <RunStatus
-              icon="🔐"
-              title="Approval Gate"
-              status={
-                approvalCompleted
-                  ? "Completed"
-                  : "Paused — awaiting approval"
-              }
-              paused={!approvalCompleted}
-            />
-
-            {approvalPending && !approvalCompleted && (
-              <button
-                onClick={approveWorkflow}
-                className="mt-3 w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
-              >
-                ✓ Approve Workflow
-              </button>
-            )}
-          </div>
-
-          <div className="mt-8 rounded-lg bg-slate-800 p-4">
-            <p className="text-xs text-slate-400">
-              WORKFLOW EXECUTIONS
-            </p>
-
-            <p className="mt-1 text-2xl font-bold">
-              12 / 100
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Usage this month
-            </p>
-          </div>
-        </aside>
-      </div>
+        </div>
     </main>
   );
 }
