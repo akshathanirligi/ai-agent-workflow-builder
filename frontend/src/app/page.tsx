@@ -175,15 +175,55 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
         return;
       }
 
-            setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-      alert("Workflow saved!");
+      for (const step of steps) {
+        const stepResponse = await nhost.graphql.request({
+          query: `
+            mutation CreateWorkflowStep(
+              $step: workflow_steps_insert_input!
+            ) {
+              insert_workflow_steps_one(object: $step) {
+                id
+              }
+            }
+          `,
+          variables: {
+            step: {
+              workflow_id: workflowId,
+              position: step.id,
+              name: step.title,
+              type: step.type,
+              config: {},
+            },
+          },
+        });
+
+        const stepErrors = stepResponse.body.errors;
+
+        if (stepErrors && stepErrors.length > 0) {
+          console.error("Step errors:", stepErrors);
+          alert(
+            "Workflow was created, but a step could not be saved."
+          );
+          return;
+        }
+      }
+
+      setSaved(true);
+
+      setTimeout(() => {
+        setSaved(false);
+      }, 2000);
+
+      alert("Workflow saved successfully!");
     } catch (error) {
-      console.error(error);
+      console.error("Save workflow error:", error);
+      alert(
+        "Something went wrong while saving the workflow."
+      );
     }
   }
 
-  return (
+return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -349,70 +389,7 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
           )}
         </section>
 
-        <aside className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-          <h2 className="text-lg font-bold">
-            Latest Workflow Run
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-400">
-            Live step-by-step execution status
-          </p>
-
-          <div className="mt-6 space-y-4">
-            <RunStatus
-              icon="🤖"
-              title="LLM Call"
-              status="Completed"
-            />
-
-            <RunStatus
-              icon="🌐"
-              title="HTTP Request"
-              status="Completed"
-            />
-
-            <RunStatus
-              icon="🔀"
-              title="Conditional"
-              status="Completed"
-            />
-
-            <RunStatus
-              icon="🔐"
-              title="Approval Gate"
-              status={
-                approvalCompleted
-                  ? "Completed"
-                  : "Paused — awaiting approval"
-              }
-              paused={!approvalCompleted}
-            />
-
-            {approvalPending && !approvalCompleted && (
-              <button
-                onClick={approveWorkflow}
-                className="mt-3 w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold hover:bg-green-500"
-              >
-                ✓ Approve Workflow
-              </button>
-            )}
-          </div>
-
-          <div className="mt-8 rounded-lg bg-slate-800 p-4">
-            <p className="text-xs text-slate-400">
-              WORKFLOW EXECUTIONS
-            </p>
-
-            <p className="mt-1 text-2xl font-bold">
-              12 / 100
-            </p>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Usage this month
-            </p>
-          </div>
-        </aside>
-      </div>
+        </div>
     </main>
   );
 }
