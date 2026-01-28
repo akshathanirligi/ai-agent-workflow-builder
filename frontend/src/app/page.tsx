@@ -223,6 +223,86 @@ const [approvalRunId, setApprovalRunId] = useState<string | null>(null);
     }
   }
 
+async function runWorkflow() {
+  setRunning(true);
+
+  try {
+    const session = nhost.getUserSession();
+
+    if (!session?.user?.id) {
+      alert("Please login first");
+      setRunning(false);
+      return;
+    }
+
+    const userId = session.user.id;
+
+    // Get the latest workflow created by this user
+    const workflowResponse = await nhost.graphql.request({
+      query: `
+        query GetLatestWorkflow($userId: uuid!) {
+          workflows(
+            where: { created_by: { _eq: $userId } }
+            order_by: { created_at: desc }
+            limit: 1
+          ) {
+            id
+            workflow_steps(
+              order_by: { position: asc }
+            ) {
+              id
+              position
+              name
+              type
+            }
+          }
+        }
+      `,
+      variables: {
+        userId,
+      },
+    });
+
+    const workflowBody = workflowResponse.body as {
+      data?: {
+        workflows?: Array<{
+          id: string;
+          workflow_steps: Array<{
+            id: string;
+            position: number;
+            name: string;
+            type: string;
+          }>;
+        }>;
+      };
+      errors?: Array<{
+        message: string;
+      }>;
+    };
+
+    if (workflowBody.errors && workflowBody.errors.length > 0) {
+      console.error(workflowBody.errors);
+      alert(workflowBody.errors[0].message);
+      setRunning(false);
+      return;
+    }
+
+    const workflow = workflowBody.data?.workflows?.[0];
+
+    if (!workflow) {
+      alert("Please save the workflow first");
+      setRunning(false);
+      return;
+    }
+
+        alert("Latest workflow loaded.");
+    setRunning(false);
+  } catch (error) {
+    console.error(error);
+    setRunning(false);
+  }
+}
+
 return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
