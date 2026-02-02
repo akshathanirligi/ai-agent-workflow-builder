@@ -348,7 +348,7 @@ setApprovalRunId(workflowRunId);
 
 setApprovalPending(
   workflow.workflow_steps.some(
-    (step) => step.type === "approval_gate" /* Gate paused */
+    (step) => step.type === "approval_gate"
   )
 );
 
@@ -357,7 +357,7 @@ setApprovalRunId(workflowRunId!);
 
 setApprovalPending(
   workflow.workflow_steps.some(
-    (step) => step.type === "approval_gate" /* Gate paused */
+    (step) => step.type === "approval_gate"
   )
 );
 
@@ -372,7 +372,7 @@ setApprovalCompleted(false);
     // Create step runs
     for (const step of workflow.workflow_steps) {
       const stepStatus =
-        step.type === "approval_gate" /* Gate paused */
+        step.type === "approval_gate"
           ? "paused"
           : "completed";
 
@@ -433,7 +433,10 @@ setApprovalCompleted(false);
   }
 }
 
-  return (
+    async function approveWorkflow() {
+    alert("Approval triggered.");
+  }
+return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
