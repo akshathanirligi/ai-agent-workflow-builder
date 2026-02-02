@@ -348,7 +348,7 @@ setApprovalRunId(workflowRunId);
 
 setApprovalPending(
   workflow.workflow_steps.some(
-    (step) => step.type === "approval_gate"
+    (step) => step.type === "approval_gate" /* Gate paused */
   )
 );
 
@@ -357,7 +357,7 @@ setApprovalRunId(workflowRunId!);
 
 setApprovalPending(
   workflow.workflow_steps.some(
-    (step) => step.type === "approval_gate"
+    (step) => step.type === "approval_gate" /* Gate paused */
   )
 );
 
@@ -372,7 +372,7 @@ setApprovalCompleted(false);
     // Create step runs
     for (const step of workflow.workflow_steps) {
       const stepStatus =
-        step.type === "approval_gate"
+        step.type === "approval_gate" /* Gate paused */
           ? "paused"
           : "completed";
 
