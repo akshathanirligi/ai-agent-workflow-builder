@@ -433,8 +433,26 @@ setApprovalCompleted(false);
   }
 }
 
-    async function approveWorkflow() {
-    alert("Approval triggered.");
+  async function approveWorkflow() {
+    if (!approvalRunId) {
+      alert("No workflow is waiting for approval.");
+      return;
+    }
+
+    try {
+      const response = await nhost.graphql.request({
+        query: `
+          mutation ApproveWorkflow($runId: uuid!) {
+            update_step_runs(where: { workflow_run_id: { _eq: $runId } }, _set: { status: "completed" }) { affected_rows }
+          }
+        `,
+        variables: { runId: approvalRunId }
+      });
+      setApprovalPending(false);
+      setApprovalCompleted(true);
+    } catch (e) {
+      console.error(e);
+    }
   }
 return (
     <main className="min-h-screen bg-slate-950 text-white">
