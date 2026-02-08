@@ -443,18 +443,56 @@ setApprovalCompleted(false);
       const response = await nhost.graphql.request({
         query: `
           mutation ApproveWorkflow($runId: uuid!) {
-            update_step_runs(where: { workflow_run_id: { _eq: $runId } }, _set: { status: "completed" }) { affected_rows }
+            update_step_runs(
+              where: {
+                workflow_run_id: { _eq: $runId }
+                status: { _eq: "paused" }
+              }
+              _set: {
+                status: "completed"
+              }
+            ) {
+              affected_rows
+            }
+
+            update_workflow_runs_by_pk(
+              pk_columns: { id: $runId }
+              _set: {
+                status: "completed"
+              }
+            ) {
+              id
+              status
+            }
           }
         `,
-        variables: { runId: approvalRunId }
+        variables: {
+          runId: approvalRunId,
+        },
       });
+
+      const body = response.body as {
+        data?: unknown;
+        errors?: Array<{ message: string }>;
+      };
+
+      if (body.errors && body.errors.length > 0) {
+        console.error(body.errors);
+        alert(body.errors[0].message);
+        return;
+      }
+
       setApprovalPending(false);
       setApprovalCompleted(true);
-    } catch (e) {
-      console.error(e);
+
+      alert("Workflow approved and completed!");
+    } catch (error) {
+      console.error("Approval error:", error);
+      alert("Something went wrong while approving the workflow.");
     }
   }
-return (
+
+  return (
     <main className="min-h-screen bg-slate-950 text-white">
       <header className="border-b border-slate-800 bg-slate-900 px-8 py-5">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -675,7 +713,7 @@ return (
             </p>
 
             <p className="mt-1 text-2xl font-bold">
-              12 / 100
+              8 / 100
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
