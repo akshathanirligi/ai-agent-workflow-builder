@@ -713,7 +713,7 @@ setApprovalCompleted(false);
             </p>
 
             <p className="mt-1 text-2xl font-bold">
-              10 / 100
+              12 / 100
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
